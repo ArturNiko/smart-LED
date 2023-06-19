@@ -11,8 +11,10 @@ use hal::{
 
 #[entry]
 fn main() -> ! {
-    //const SOUND_SPEED: f32 = 0.034;
+    let (mut echo_end, mut echo_start): (u64, u64);
 
+
+    // Boilerplate
     let peripherals = Peripherals::take();
     let mut system = peripherals.DPORT.split();
     let clocks = ClockControl::boot_defaults(system.clock_control).freeze();
@@ -25,19 +27,20 @@ fn main() -> ! {
     let mut wdt = timer_group0.wdt;
     let mut rtc = Rtc::new(peripherals.RTC_CNTL);
 
+
     // Disable MWDT and RWDT (Watchdog) flash boot protection
     wdt.disable();
     rtc.rwdt.disable();
 
-    // Set GPIO5 as an output and GPIO15 analog input.
+
+    // Set GPIO5 as an output and GPIO15 analog input
     let io = IO::new(peripherals.GPIO, peripherals.IO_MUX);
 
     let mut trig = io.pins.gpio2.into_push_pull_output();
     let echo = io.pins.gpio15.into_floating_input();
 
     
-
-    // Initialize the Delay peripheral and activate timer.
+    // Initialize the Delay peripheral and activate timer
     let mut delay: Delay = Delay::new(&clocks);
     timer_group0.timer0.set_counter_active(true);
 
@@ -47,6 +50,7 @@ fn main() -> ! {
         trig.set_low().unwrap();
         delay.delay_ms(5_u32);
         
+
         // Sets the trigPin on HIGH state for 10 micro seconds
         trig.set_high().unwrap();
         delay.delay_ms(10_u32);
@@ -56,21 +60,22 @@ fn main() -> ! {
         // Wait until pin goes high
         while !echo.is_high().unwrap() {}
 
+
         // Kick off timer measurement
-        let echo_start = timer_group0.timer0.now();
+        echo_start = timer_group0.timer0.now();
+
 
         // Wait until pin goes low
         while !echo.is_low().unwrap() {}
 
+
         // Collect current timer count
-        let echo_end = timer_group0.timer0.now();
+        echo_end = timer_group0.timer0.now();
 
-    
-        // Calculate the elapsed timer count
-        let echo_dur = echo_end - echo_start;
 
-        // Calculate the distance in cms using formula in datasheet
-        let distance_cm = echo_dur / 16 / 58;
+        // Calculate the elapsed timer count, and the distance in cms
+        let distance_cm = (echo_end - echo_start) / 16 / 58;
+
 
         // Print the distance output
         println!("Distance {} cm\r", distance_cm);
