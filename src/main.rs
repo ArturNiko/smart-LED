@@ -42,7 +42,7 @@ fn main() -> ! {
     
     // Initialize the Delay peripheral and activate timer
     let mut delay: Delay = Delay::new(&clocks);
-    timer_group0.timer0.set_counter_active(true);
+    timer_group0.timer0.start(0_u32.millis());
 
 
     loop {
@@ -57,28 +57,13 @@ fn main() -> ! {
         trig.set_low().unwrap();
 
 
-        // Wait until pin goes high
-        while !echo.is_high().unwrap() {}
-
-
-        // Kick off timer measurement
-        echo_start = timer_group0.timer0.now();
-
-
-        // Wait until pin goes low
-        while !echo.is_low().unwrap() {}
-
-
-        // Collect current timer count
-        echo_end = timer_group0.timer0.now();
-
-
+     
         // Calculate the elapsed timer count, and the distance in cms
-        let distance_cm = (echo_end - echo_start) / 16 / 58;
+        //let distance_cm = (echo_end - echo_start) / 16 / 58;
 
 
         // Print the distance output
-        println!("Distance {} cm\r", distance_cm);
+        //println!("Distance {} cm\r", distance_cm);
     }
     
 }
