@@ -35,51 +35,56 @@ pub struct USS<const GPIONUM: u8> {
 
     echo_start: u64,
     echo_end: u64,
+    distance_cm: f32
 }
 
 pub struct Controller{
-    uss: Option<Vec<USS>>,
+    sets: Option<Vec<USS>>,
 }
 
 impl Controller {
     pub fn add<const GPIONUM: u8>(&mut self, echo: Echo<GPIONUM>, trigger: Trigger<GPIONUM>, timer: Timer) {
-        let sensor_data = USS { trigger, echo, timer, echo_start: 0, echo_end: 0 };
-        self.uss.push(sensor_data);
+        let sensor_data = USS { trigger, echo, timer, echo_start: 0, echo_end: 0, distance_cm: 0.0 };
+        self.sets.push(sensor_data);
     }
 
-    pub fn trigger_state_toggle(&mut self, state: bool, id: &Option<u8>) {
-        &self.uss.iter().map(|set| if state { set.trigger.set_high() } else { set.trigger.set_low() });
-    }
-
-    pub fn run(&mut self, id: &Option<u8>) {
-
+    pub fn run(&mut self) {
         // Choose sensor
-        match id {
-            Some(i) => Self::update(self.uss[i]),
-            None => self.uss.iter().map(|i| Self::update(self.uss[i]))
-
-        }
-        let sensor = self.uss[id.unwrap_or(0)];
-
-       
+        self.sets.iter().map(|i| Self::update(self.sets[i]));
     } 
 
-    fn update<const GPIONUM: u8>(uss: USS<GPIONUM>){
+    fn update<const GPIONUM: u8>(sets: USS<GPIONUM>){
         // Wait until pin goes high
-        while !uss.echo.is_high().unwrap() {}
-
+        while !sets.echo.is_high().unwrap() {}
 
         // Kick off timer measurement
-        uss.echo_start = uss.timer.now();
-
+        sets.echo_start = sets.timer.now();
 
         // Wait until pin goes low
-        while !uss.echo.is_low().unwrap() {}
-
+        while !sets.echo.is_low().unwrap() {}
 
         // Collect current timer count
-        uss.echo_end = uss.timer.now();
+        sets.echo_end = sets.timer.now();
+
+        // Calculate the elapsed timer count, and the distance in cms
+        sets.distance_cm = ((sets.echo_end - sets.echo_start) / 16 / 58) as f32;
     }
 
+    pub fn trigger_high(&mut self, id: &Option<u8>) {
+             match id {
+                Some(i) => self.sets[i].trigger.set_high(),
+                None => self.sets.iter().map(|set| set.trigger.set_high())
+            }
+    }
 
+    pub fn trigger_low(&mut self, id: &Option<u8>) {
+        match id {
+            Some(i) => self.sets[i].trigger.set_low(),
+            None => self.sets.iter().map(|set| set.trigger.set_low())
+        }
+    }
+
+    pub fn sets(&self) -> Option<Vec<USS>>{
+        self.sets
+    }
 }

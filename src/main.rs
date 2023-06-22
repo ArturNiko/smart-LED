@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 
+extern crate alloc;
+
 use esp_backtrace as _;
 use esp_println::println;
 use hal::{
@@ -8,7 +10,9 @@ use hal::{
     Rtc,
 };
 
-mod uss_controller;
+mod uss_controller {
+    use alloc;
+}
 
 #[entry]
 fn main() -> ! {
@@ -35,27 +39,33 @@ fn main() -> ! {
     // Set GPIO5 as an output and GPIO15 analog input
     let io = IO::new(peripherals.GPIO, peripherals.IO_MUX);
 
-    let mut trig = io.pins.gpio32.into_push_pull_output();
-    let echo = io.pins.gpio33.into_floating_input();
-
-    let uss_controller = uss_controller::Controller { uss: None };
+    let uss_controller = uss_controller::Controller { sets: None };
 
     uss_controller.add(io.pins.gpio15.into_floating_input(), io.pins.gpio2.into_push_pull_output(), timer_group0.timer0);
-    uss_controller.add(io.pins.gpio33.into_floating_input(), io.pins.gpio32.into_push_pull_output(), timer_group0.timer0);    
+    uss_controller.add(io.pins.gpio33.into_floating_input(), io.pins.gpio32.into_push_pull_output(), timer_group0.timer1);    
     // Initialize the Delay peripheral and activate timer
     let mut delay: Delay = Delay::new(&clocks);
 
 
     loop {
-        // Clears the trigPin
-        //trig.set_low().unwrap();
-        //delay.delay_ms(5_u32);
-        
+        uss_controller.trigger_low(&None);
+        delay.delay_ms(5_u32);
 
-        // Sets the trigPin on HIGH state for 10 micro seconds
-        //trig.set_high().unwrap();
-        //delay.delay_ms(10_u32);
-        //trig.set_low().unwrap();
+        uss_controller.trigger_high(&None);
+        delay.delay_ms(10_u32);
+        uss_controller.trigger_low(&None);
+
+        uss_controller.run();
+
+
+   
+        for set in uss_controller.sets().iter() {
+            match set {
+                Some(s) => println!("Distance {} cm\r", s.distance_cm),
+                None => ()
+    
+            }
+        }
 
 
      
